@@ -13,7 +13,7 @@ class ReplayBuffer:
         self.state_buf = np.zeros((max_size, state_dim), dtype=np.float32)
         self.next_state_buf = np.zeros((max_size, state_dim), dtype=np.float32)
         self.action_buf = np.zeros((max_size, action_dim), dtype=np.float32)
-        self.reward_buf = np.zeros((max_size, 8), dtype=np.float32)
+        self.reward_buf = np.zeros((max_size, 1), dtype=np.float32)
         self.done_buf = np.zeros((max_size, 1), dtype=np.float32)
 
     def add(self, state, action, reward, next_state, done):
@@ -105,7 +105,7 @@ class TD3(object):
         self.total_it += 1
 
         # Sample a batch of transitions from memory
-        state, action, next_state, reward, not_done = self.memory.sample(batch_size)
+        state, action, reward, next_state, not_done = self.memory.sample(batch_size)
 
         state = torch.FloatTensor(state).to(self.device)
         action = torch.FloatTensor(action).to(self.device)
@@ -185,14 +185,15 @@ env.seed(0)
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
+filename = "whatever"
 
 td3 = TD3(state_dim, action_dim, max_action)
 
-total_timesteps = 1000000
+total_timesteps = 5000
 timesteps_since_eval = 0
 episode_num = 0
 episode_reward = 0
-eval_freq = 5000
+eval_freq = 100
 num_eval_episodes = 3
 batch_size = 128
 
@@ -214,12 +215,15 @@ for t in range(total_timesteps):
         print(f"Avg. Reward: {avg_reward:.3f}")
         print("---------------------------------------")
 
+        td3.save(filename)
+
     # Collect experience and update the agent
     state, done = env.reset(), False
     while not done:
         action = td3.select_action(state)
         next_state, reward, done, _ = env.step(action)
-        td3.memory.add(state, action, next_state, reward, float(done))
+        # print(done)
+        td3.memory.add(state, action, reward, next_state, float(done))
         state = next_state
         episode_reward += reward
 
