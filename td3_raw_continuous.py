@@ -175,7 +175,7 @@ class TD3(object):
         self.actor.load_state_dict(torch.load(filename + "_actor"))
         self.actor_target.load_state_dict(torch.load(filename + "_actor"))
         self.critic1.load_state_dict(torch.load(filename + "_critic1"))
-        self.critic1_target.load_state_dict(torch.load(filename + filename + "_critic1"))
+        self.critic1_target.load_state_dict(torch.load(filename + "_critic1"))
         self.critic2.load_state_dict(torch.load(filename + "_critic2"))
         self.critic2_target.load_state_dict(torch.load(filename + "_critic2"))
 
@@ -197,41 +197,82 @@ eval_freq = 100
 num_eval_episodes = 3
 batch_size = 128
 
-for t in range(total_timesteps):
+eval = False
 
-    # Evaluate the policy periodically
-    if timesteps_since_eval >= eval_freq:
-        timesteps_since_eval %= eval_freq
-        avg_reward = 0.0
-        for i in range(num_eval_episodes):
-            state, done = env.reset(), False
-            while not done:
-                action = td3.select_action(state)
-                state, reward, done, _ = env.step(action)
-                avg_reward += reward
-        avg_reward /= num_eval_episodes
-        print("---------------------------------------")
-        print(f"Evaluation Episode: {episode_num}")
-        print(f"Avg. Reward: {avg_reward:.3f}")
-        print("---------------------------------------")
+if (not eval):
+    for t in range(total_timesteps):
 
-        td3.save(filename)
+        # Evaluate the policy periodically
+        if timesteps_since_eval >= eval_freq:
+            timesteps_since_eval %= eval_freq
+            avg_reward = 0.0
+            for i in range(num_eval_episodes):
+                state, done = env.reset(), False
+                while not done:
+                    action = td3.select_action(state)
+                    state, reward, done, _ = env.step(action)
+                    avg_reward += reward
+            avg_reward /= num_eval_episodes
+            print("---------------------------------------")
+            print(f"Evaluation Episode: {episode_num}")
+            print(f"Avg. Reward: {avg_reward:.3f}")
+            print("---------------------------------------")
 
-    # Collect experience and update the agent
-    state, done = env.reset(), False
-    while not done:
-        action = td3.select_action(state)
-        next_state, reward, done, _ = env.step(action)
-        # print(done)
-        td3.memory.add(state, action, reward, next_state, float(done))
-        state = next_state
-        episode_reward += reward
+            td3.save(filename)
 
-        td3.train(batch_size)
+        # Collect experience and update the agent
+        state, done = env.reset(), False
+        while not done:
+            action = td3.select_action(state)
+            next_state, reward, done, _ = env.step(action)
+            # print(done)
+            td3.memory.add(state, action, reward, next_state, float(done))
+            state = next_state
+            episode_reward += reward
 
-    # Print status
-    if done:
-        episode_num += 1
-        timesteps_since_eval += 1
-        print(f"Total T: {t+1} Episode Num: {episode_num} Episode T: {len(td3.memory)} Reward: {episode_reward:.3f}")
-        episode_reward = 0
+            td3.train(batch_size)
+
+        # Print status
+        if done:
+            episode_num += 1
+            timesteps_since_eval += 1
+            print(f"Total T: {t+1} Episode Num: {episode_num} Episode T: {len(td3.memory)} Reward: {episode_reward:.3f}")
+            episode_reward = 0
+
+if (eval):
+    td3.load(filename)
+
+    # Evaluate the policy
+    num_episodes = 10
+    avg_reward = 0.0
+
+    for i in range(num_episodes):
+        state = env.reset()
+        done = False
+        episode_reward = 0.0
+
+        while not done:
+            # Use actor network to select action
+            state = torch.FloatTensor(state).to(td3.device)
+            # state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            action_tensor = td3.actor(state)
+            action = action_tensor.cpu().detach().numpy()
+            print(action)
+
+            # Take action in the environment
+            next_state, reward, done, _ = env.step(action)
+            episode_reward += reward
+
+            # Update state for next iteration
+            state = next_state
+
+            # Render the environment
+            env.render()
+
+        avg_reward += episode_reward
+
+        print(f'Episode {i+1}: reward = {episode_reward:.2f}')
+
+    print(f'Average reward over {num_episodes} episodes: {avg_reward/num_episodes:.2f}')
+
+    env.close()
