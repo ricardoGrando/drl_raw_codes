@@ -189,7 +189,7 @@ filename = "whatever"
 
 td3 = TD3(state_dim, action_dim, max_action)
 
-total_timesteps = 5000
+total_timesteps = 10000
 timesteps_since_eval = 0
 episode_num = 0
 episode_reward = 0
@@ -257,7 +257,7 @@ if (eval):
             # state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
             action_tensor = td3.actor(state)
             action = action_tensor.cpu().detach().numpy()
-            print(action)
+            # print(action)
 
             # Take action in the environment
             next_state, reward, done, _ = env.step(action)
