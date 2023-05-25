@@ -4,11 +4,12 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 import gym
+import gym_hydrone
 from replay_buffer import ReplayBuffer
 from networks import Actor, Critic
 from learner import TD3
 
-env = gym.make('LunarLanderContinuous-v2')
+env = gym.make('hydrone_Circuit_Simple-v0')
 env.seed(0)
 
 state_dim = env.observation_space.shape[0]
